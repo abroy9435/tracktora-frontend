@@ -4,9 +4,9 @@ import '../core/cache/auth_cache.dart';
 
 class AuthEngine {
   // Matches your Go endpoint: POST /api/auth/register
-  static Future<Response> register(String name, String email, String password) async {
+  static Future<Response> register(String username, String email, String password) async {
     return await api.post('/api/auth/register', data: {
-      'name': name,
+      'username': username, // <-- This was the culprit!
       'email': email,
       'password': password,
     });

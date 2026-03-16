@@ -1,28 +1,31 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../cache/auth_cache.dart';
 
 class ApiClient {
   late Dio dio;
-  
-  // Replace this with your Hugging Face URL once hosted
-  static const String baseUrl = "http://localhost:7860"; 
+
+  // Pulls from .env file, defaults to local if the key is missing
+  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? "http://localhost:7860";
 
   ApiClient() {
     dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 15), // Increased for cloud wake-up
+        receiveTimeout: const Duration(seconds: 15),
         contentType: 'application/json',
+        headers: {
+          'Accept': 'application/json',
+        },
       ),
     );
 
     // --- THE INTERCEPTOR ---
-    // This automatically pastes the token in every call
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Retrieve token from your cache file
+          // Automatically inject the JWT token if it exists
           final token = await AuthCache.getToken();
           if (token != null) {
             options.headers["Authorization"] = "Bearer $token";
@@ -30,9 +33,10 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) {
-          // Handle global errors like 401 (Unauthorized) here
+          // Global session handling: clear cache if token is invalid/expired
           if (e.response?.statusCode == 401) {
-            // Logic to logout or refresh token
+            AuthCache.clear();
+            // You could also trigger a navigation to /login here if needed
           }
           return handler.next(e);
         },

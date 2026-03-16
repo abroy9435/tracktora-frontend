@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../../engine/auth_engine.dart';
+import '../../widgets/spinner.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,7 +13,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Controllers for the three fields your Go backend expects
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -21,20 +21,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
 
   Future<void> _handleRegister() async {
-    // 1. Validation
-    if (_nameController.text.isEmpty || 
-        _emailController.text.isEmpty || 
-        _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all fields')));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // 2. Call the engine
       final response = await AuthEngine.register(
         _nameController.text.trim(),
         _emailController.text.trim(),
@@ -44,17 +38,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile created successfully! Please log in.'),
-              backgroundColor: Colors.green, // Success color
-            ),
+            const SnackBar(content: Text('Profile created successfully! Please log in.'), backgroundColor: Colors.green),
           );
-          // Route back to the login screen so they can sign in
           context.go('/login');
         }
       }
     } on DioException catch (e) {
-      // 3. Handle backend errors (e.g., "Email already exists")
       String errorMessage = 'Registration failed. Please try again.';
       if (e.response != null && e.response?.data['error'] != null) {
         errorMessage = e.response?.data['error']; 
@@ -62,10 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Theme.of(context).colorScheme.primary, 
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     } finally {
@@ -86,12 +72,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      // We use an AppBar here so the user can easily hit the back button if they change their mind
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: theme.iconTheme.color),
           onPressed: () => context.pop(),
         ),
       ),
@@ -103,114 +88,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // --- HEADER ---
-                SvgPicture.asset(
-                  'assets/logo.svg',
-                  height: 80,
-                ),
+                SvgPicture.asset('assets/logo.svg', height: 80),
                 const SizedBox(height: 24),
-                Text(
-                  'Join the Hunt', // Cyberpunk styling
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                // Removed hardcoded Colors.white
+                Text('Join the Hunt', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text(
-                  'Create your TrackTora profile.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[400],
-                  ),
-                ),
+                Text('Create your TrackTora profile.', textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
                 const SizedBox(height: 40),
 
-                // --- FORM ---
-                // 1. Full Name
                 TextField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
+                  // Let the theme handle the text color
+                  decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.person_outline)),
                 ),
                 const SizedBox(height: 16),
 
-                // 2. Email Address
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)),
                 ),
                 const SizedBox(height: 16),
 
-                // 3. Password
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // --- ACTIONS ---
                 FilledButton(
                   onPressed: _isLoading ? null : _handleRegister,
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'ESTABLISH PROFILE', 
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
+                      ? const CyberSpinner(color: Colors.white, size: 24, strokeWidth: 2)
+                      : const Text('ESTABLISH PROFILE', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                 ),
                 const SizedBox(height: 24),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Already have an account? ",
-                      style: TextStyle(color: Colors.grey[400]),
-                    ),
+                    Text("Already have an account? ", style: TextStyle(color: Colors.grey[600])),
                     TextButton(
-                      onPressed: () => context.pop(), // Pops back to Login screen
-                      child: Text(
-                        'Sign In',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      onPressed: () => context.pop(), 
+                      child: Text('Sign In', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
