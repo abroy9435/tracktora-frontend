@@ -1,43 +1,22 @@
 import 'package:flutter/material.dart';
+import 'core/config/theme.dart';
+import 'core/router/router.dart';
 
 void main() {
-  runApp(const TrackToraApp());
+  runApp(const TrackTora());
 }
 
-class TrackToraApp extends StatelessWidget {
-  const TrackToraApp({super.key});
+class TrackTora extends StatelessWidget {
+  const TrackTora({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'TrackTora',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
-      home: const LoginScreen(),
-    );
-  }
-}
-
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Text(
-          'TrackTora Styling Works 🚀',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.indigo,
-          ),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system, // Auto-switches based on phone settings
+      routerConfig: router,
     );
   }
 }
