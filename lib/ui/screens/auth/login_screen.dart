@@ -45,12 +45,30 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage, style: const TextStyle(color: Colors.white)),
-            backgroundColor: Theme.of(context).colorScheme.error, 
-          ),
-        );
+        // Intercept the 403 Unverified error to offer a quick fix
+        if (e.response?.statusCode == 403) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'VERIFY NOW',
+                textColor: Colors.white,
+                onPressed: () {
+                  context.push('/verify-email', extra: _emailController.text.trim());
+                },
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage, style: const TextStyle(color: Colors.white)),
+              backgroundColor: Theme.of(context).colorScheme.error, 
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

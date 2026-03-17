@@ -2,19 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/config/theme.dart';
 import 'core/router/router.dart';
+import 'core/cache/app_cache.dart';
+
+// Global Notifier for Theme Mode
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
-  // --- CRITICAL ADDITION ---
-  // This ensures Flutter services are ready before loading the .env or running the app
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
-    // Fallback or debug print if .env is missing
     debugPrint("Warning: .env file not found. Using default configurations.");
   }
+  await AppCache.init();
 
+  final savedTheme = AppCache.getThemeMode();
+  if (savedTheme == 'light') {
+    themeNotifier.value = ThemeMode.light;
+  } else if (savedTheme == 'dark') {
+    themeNotifier.value = ThemeMode.dark;
+  } else {
+    themeNotifier.value = ThemeMode.system;
+  }
   runApp(const TrackTora());
 }
 
@@ -23,13 +33,18 @@ class TrackTora extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'TrackTora',
-      debugShowCheckedModeBanner: false, // Optional: Cleans up the UI
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system, 
-      routerConfig: router,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, child) {
+        return MaterialApp.router(
+          title: 'TrackTora',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: currentMode, // Now reacts to changes instantly
+          routerConfig: router,
+        );
+      },
     );
   }
 }

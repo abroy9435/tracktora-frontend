@@ -38,9 +38,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile created successfully! Please log in.'), backgroundColor: Colors.green),
+            const SnackBar(content: Text('Verification code sent!'), backgroundColor: Colors.green),
           );
-          context.go('/login');
+          // Navigate to OTP screen and pass the email
+          context.push('/verify-email', extra: _emailController.text.trim());
         }
       }
     } on DioException catch (e) {
@@ -90,7 +91,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 SvgPicture.asset('assets/logo.svg', height: 80),
                 const SizedBox(height: 24),
-                // Removed hardcoded Colors.white
                 Text('Join the Hunt', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text('Create your TrackTora profile.', textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
@@ -99,7 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
-                  // Let the theme handle the text color
                   decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.person_outline)),
                 ),
                 const SizedBox(height: 16),

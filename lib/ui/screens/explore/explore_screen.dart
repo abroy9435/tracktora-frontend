@@ -29,7 +29,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final response = await ExploreEngine.getFeed();
       if (mounted) {
         setState(() {
-          _opportunities = response.data['explore_feed'] ?? []; // Targeting correct key from Go backend
+          _opportunities = response.data['explore_feed'] ?? []; 
           _isLoading = false;
         });
       }
@@ -66,13 +66,132 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
+  // --- NEW: Opportunity Details Sheet (Matches Dashboard Style) ---
+  void _showOpportunityDetailsSheet(BuildContext context, Map<String, dynamic> opp, ThemeData theme, int index) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2), 
+                        child: Text(opp['company']?[0]?.toUpperCase() ?? '?', style: TextStyle(fontSize: 24, color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(opp['title'] ?? 'Unknown Role', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(opp['company'] ?? 'Unknown Company', style: TextStyle(fontSize: 16, color: Colors.grey[400])),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(color: Colors.grey),
+                  const SizedBox(height: 16),
+                  
+                  _buildDetailRow(Icons.location_on, 'Location', opp['location'] ?? 'Not specified', theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  _buildDetailRow(Icons.link, 'Source URL', opp['apply_url'] != null && opp['apply_url'].toString().isNotEmpty ? opp['apply_url'] : 'Direct Search', Colors.blueAccent),
+                  
+                  const SizedBox(height: 24),
+                  Text('Job Description', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                    child: Text(
+                      opp['description'] ?? 'No additional description provided.',
+                      style: TextStyle(color: Colors.grey[300], height: 1.5),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _savingIndex != null ? null : () {
+                        Navigator.pop(context);
+                        _saveOpportunity(
+                          opp['company'] ?? 'Unknown',
+                          opp['title'] ?? 'Unknown',
+                          opp['apply_url'] ?? '',
+                          index,
+                        );
+                      },
+                      icon: _savingIndex == index 
+                        ? const CyberSpinner(size: 16, strokeWidth: 2) 
+                        : const Icon(Icons.bookmark_add),
+                      label: Text(_savingIndex == index ? 'TRACKING...' : 'START TRACKING THIS JOB'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, Color iconColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: iconColor, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OPPORTUNITIES', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        title: const Text('EXPLORE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -88,8 +207,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
       body: _isLoading 
         ? _buildSkeletonFeed()
         : _errorMessage != null
-          ? Center(child: Text(_errorMessage!, style: TextStyle(color: theme.colorScheme.primary)))
+          ? _buildErrorState(theme)
           : _buildFeedList(theme),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off, size: 64, color: theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            Text(_errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -148,82 +283,85 @@ class _ExploreScreenState extends State<ExploreScreen> {
           final opp = _opportunities[index];
           final isSavingThis = _savingIndex == index;
           
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)), 
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2), 
-                      child: Text(
-                        opp['company']?[0] ?? '?', 
-                        style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 20),
+          return GestureDetector(
+            onTap: () => _showOpportunityDetailsSheet(context, opp, theme, index),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)), 
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 25,
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2), 
+                        child: Text(
+                          opp['company']?[0]?.toUpperCase() ?? '?', 
+                          style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 20),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            opp['role'] ?? 'Unknown Role',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            opp['company'] ?? 'Unknown Company',
-                            style: TextStyle(color: theme.colorScheme.secondary),
-                          ),
-                        ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              opp['title'] ?? 'Unknown Role',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              opp['company'] ?? 'Unknown Company',
+                              style: TextStyle(color: theme.colorScheme.secondary),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    if (opp['location'] != null)
-                      Text(opp['location'], style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  opp['description'] ?? 'No description provided.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 20),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: isSavingThis ? null : () {
-                      _saveOpportunity(
-                        opp['company'] ?? 'Unknown',
-                        opp['role'] ?? 'Unknown',
-                        opp['url'] ?? '',
-                        index,
-                      );
-                    },
-                    icon: isSavingThis 
-                      ? const CyberSpinner(size: 16, strokeWidth: 2) 
-                      : Icon(Icons.bookmark_add_outlined, color: theme.colorScheme.primary),
-                    label: Text(
-                      isSavingThis ? 'TRACKING...' : 'TRACK THIS OPPORTUNITY', 
-                      style: TextStyle(color: theme.colorScheme.primary)
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: theme.colorScheme.primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      if (opp['location'] != null)
+                        Text(opp['location'], style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    opp['description'] ?? 'No description provided.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: isSavingThis ? null : () {
+                        _saveOpportunity(
+                          opp['company'] ?? 'Unknown',
+                          opp['title'] ?? 'Unknown',
+                          opp['apply_url'] ?? '',
+                          index,
+                        );
+                      },
+                      icon: isSavingThis 
+                        ? const CyberSpinner(size: 16, strokeWidth: 2) 
+                        : Icon(Icons.bookmark_add_outlined, color: theme.colorScheme.primary),
+                      label: Text(
+                        isSavingThis ? 'TRACKING...' : 'TRACK THIS OPPORTUNITY', 
+                        style: TextStyle(color: theme.colorScheme.primary)
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: theme.colorScheme.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
