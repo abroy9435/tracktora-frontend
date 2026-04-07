@@ -78,7 +78,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(color: Colors.white),
+                  // Removed the hardcoded white text style here to fix the invisible text issue
                   decoration: const InputDecoration(labelText: 'Registered Email', prefixIcon: Icon(Icons.email_outlined)),
                 ),
                 const SizedBox(height: 32),

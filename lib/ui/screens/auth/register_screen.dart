@@ -40,8 +40,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Verification code sent!'), backgroundColor: Colors.green),
           );
-          // Navigate to OTP screen and pass the email
-          context.push('/verify-email', extra: _emailController.text.trim());
+          
+          // PASS BOTH EMAIL AND PASSWORD FOR AUTO-LOGIN
+          context.push('/verify-email', extra: {
+            'email': _emailController.text.trim(),
+            'password': _passwordController.text,
+          });
         }
       }
     } on DioException catch (e) {

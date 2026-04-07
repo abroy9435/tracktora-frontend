@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../../engine/application_engine.dart';
+import '../../../engine/connect_engine.dart'; 
 import '../../widgets/skeleton.dart';
 import '../../../core/cache/app_cache.dart';
 
@@ -17,6 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   Map<String, dynamic> _stats = {};
   List<dynamic> _applications = [];
+  List<dynamic> _pendingRequests = []; 
 
   final List<String> _statusOptions = ['Wishlist', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
@@ -25,11 +28,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadCachedDashboard();
     _fetchDashboardData();
+    _fetchPendingRequests(); 
   }
 
   void _loadCachedDashboard() {
     final cachedStats = AppCache.getStats();
-    final cachedApps = AppCache.getApplications(); // Use the new list cache
+    final cachedApps = AppCache.getApplications(); 
     
     if (cachedStats != null || cachedApps != null) {
       setState(() {
@@ -50,7 +54,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final freshStats = results[0].data;
       final freshApps = results[1].data['applications'] ?? [];
 
-      // Update Persistence
       await AppCache.setStats(freshStats);
       await AppCache.setApplications(freshApps);
 
@@ -72,38 +75,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _fetchPendingRequests() async {
+    try {
+      final response = await ConnectEngine.getPendingRequests();
+      if (mounted) {
+        setState(() {
+          _pendingRequests = response.data['pending_requests'] ?? [];
+        });
+      }
+    } catch (_) {}
+  }
+
   // --- REPOSITORY LOGIC ---
 
-  void _handleDeleteApplication(int index, Map<String, dynamic> app) {
+  void _handleDeleteApplication(int index, Map<String, dynamic> app) async {
     final appId = app['id'].toString(); 
     final appName = app['company_name'] ?? 'Opportunity';
 
+    // 1. UI Update (Remove from screen)
     setState(() => _applications.removeAt(index));
+    
+    // 2. IMMEDIATE Cache Sync (Update local storage so it doesn't return on restart)
+    await AppCache.setApplications(_applications);
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).clearSnackBars(); 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$appName removed from tracker'),
-        duration: const Duration(seconds: 4), 
+        content: Text('$appName removed'),
+        duration: const Duration(seconds: 3), // Faster timeout
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'UNDO',
           textColor: Theme.of(context).colorScheme.primary,
-          onPressed: () {
-            if (mounted) setState(() => _applications.insert(index, app));
+          onPressed: () async {
+            // Re-insert into UI and Cache
+            setState(() => _applications.insert(index, app));
+            await AppCache.setApplications(_applications);
           },
         ),
       ),
     ).closed.then((reason) async {
+      // 3. Only hit the API if the user DID NOT press Undo
       if (reason != SnackBarClosedReason.action) {
         try {
           await ApplicationEngine.deleteApplication(appId);
           _refreshStatsOnly(); 
         } catch (e) {
           if (mounted) {
+            // Revert if API failed completely
             setState(() => _applications.insert(index, app));
+            await AppCache.setApplications(_applications);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Network error. Failed to delete.')),
+              const SnackBar(content: Text('Network error. Delete failed.')),
             );
           }
         }
@@ -403,7 +428,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () { setState(() { _isLoading = true; _errorMessage = null; }); _fetchDashboardData(); })
+          IconButton(icon: const Icon(Icons.refresh), onPressed: () { setState(() { _isLoading = true; _errorMessage = null; }); _fetchDashboardData(); _fetchPendingRequests(); }),
+          
+          // Notifications Badge
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: Badge(
+                isLabelVisible: _pendingRequests.isNotEmpty,
+                label: Text('${_pendingRequests.length}'),
+                child: const Icon(Icons.notifications_none_outlined),
+              ),
+              onPressed: () {
+                context.push('/pending-requests').then((_) {
+                  _fetchPendingRequests();
+                });
+              },
+            ),
+          ),
         ],
       ),
       body: _isLoading 
