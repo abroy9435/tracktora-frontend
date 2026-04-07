@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../screens/dashboard/dashboard_screen.dart';
+import '../screens/vault/vault_screen.dart'; // IMPORT THIS
 import '../screens/explore/explore_screen.dart';
 import '../screens/connect/connect_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -19,8 +20,10 @@ class _MainLayoutState extends State<MainLayout> {
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
   bool _wasOffline = false;
 
+  // Added VaultScreen at Index 1
   final List<Widget> _screens = const [
     DashboardScreen(),
+    VaultScreen(),
     ExploreScreen(),
     ConnectScreen(),
     ProfileScreen(),
@@ -85,6 +88,12 @@ class _MainLayoutState extends State<MainLayout> {
               icon: Icon(Icons.dashboard_outlined),
               selectedIcon: Icon(Icons.dashboard),
               label: 'Dashboard',
+            ),
+            // THE NEW VAULT TAB
+            NavigationDestination(
+              icon: Icon(Icons.shield_outlined),
+              selectedIcon: Icon(Icons.shield),
+              label: 'Vault',
             ),
             NavigationDestination(
               icon: Icon(Icons.travel_explore_outlined),
